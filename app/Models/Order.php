@@ -15,22 +15,19 @@ class Order extends Model
      * @var array<int, string>
      */
     protected $fillable = [
-        'name',
+        'organization_id',
+        'customer_name',
         'order_number',
-        'item_id',
-        'price',
         'status',
-        'address_line_1',
-        'address_line_2',
+        'address',
         'city',
-        'state',
-        'postal_code',
-        'country',
-        'phone',
+        'contact_number_one',
+        'contact_number_two',
         'email',
+        'other',
+        'due_date',
+        'lead_from',
         'notes',
-        'weight',
-        'delivery_date',
     ];
 
     /**
@@ -39,9 +36,7 @@ class Order extends Model
      * @var array<string, string>
      */
     protected $casts = [
-        'price' => 'decimal:2',
-        'weight' => 'decimal:2',
-        'delivery_date' => 'date',
+        'due_date' => 'date',
     ];
 
     /**
@@ -57,11 +52,37 @@ class Order extends Model
     }
 
     /**
-     * Get the item associated with the order.
+     * Get the organization that owns the order.
      */
-    public function item()
+    public function organization()
     {
-        return $this->belongsTo(Item::class);
+        return $this->belongsTo(Organization::class);
+    }
+
+    /**
+     * Get the order items associated with this order.
+     */
+    public function orderItems()
+    {
+        return $this->hasMany(OrderItem::class);
+    }
+
+    /**
+     * Get the total amount of this order.
+     */
+    public function getTotalAmountAttribute(): float
+    {
+        return $this->orderItems->sum(function ($item) {
+            return ($item->sale_amount * $item->qty) + $item->del_fee;
+        });
+    }
+
+    /**
+     * Get the total delivery fee of this order.
+     */
+    public function getTotalDeliveryFeeAttribute(): float
+    {
+        return $this->orderItems->sum('del_fee');
     }
 
     /**
@@ -117,18 +138,25 @@ class Order extends Model
      */
     public function getFullAddressAttribute(): string
     {
-        $address = $this->address_line_1;
-        if ($this->address_line_2) {
-            $address .= ', ' . $this->address_line_2;
-        }
-        $address .= ', ' . $this->city;
-        if ($this->state) {
-            $address .= ', ' . $this->state;
-        }
-        $address .= ' ' . $this->postal_code;
-        $address .= ', ' . $this->country;
+        $parts = array_filter([
+            $this->address,
+            $this->city,
+        ]);
         
-        return $address;
+        return implode(', ', $parts);
+    }
+
+    /**
+     * Get lead from options.
+     */
+    public static function getLeadFromOptions(): array
+    {
+        return [
+            'facebook' => 'Facebook',
+            'whatsapp' => 'WhatsApp',
+            'advertisement' => 'Advertisement',
+            'other' => 'Other',
+        ];
     }
 
     /**

@@ -18,33 +18,29 @@ use Src\Admin\Order\Controllers\OrderController;
 
 // Authentication Routes
 Route::get('/csrf-token', [AuthController::class, 'getCsrfToken'])->name('admin.csrf');
-
+Route::post('/register', [AuthController::class, 'register'])->name('admin.register');
 Route::post('/login', [AuthController::class, 'login'])->name('admin.login');
-Route::prefix('profile')->group(function () {
-    Route::post('/login', [AuthController::class, 'login'])->name('admin.login');
-    Route::post('/register', [AuthController::class, 'register'])->name('admin.register');
 
-});
 
 Route::middleware(['auth:sanctum','auth:admin'])->group(function () {
-
+    
     // =========================================================================
     // PROFILE MODULE ROUTES
     // =========================================================================
-
+    
     Route::prefix('profile')->group(function () {
         Route::get('/', [AuthController::class, 'getProfile'])->name('admin.profile.get');
         Route::put('/', [AuthController::class, 'updateProfile'])->name('admin.profile.update');
         Route::delete('/', [AuthController::class, 'deleteProfile'])->name('admin.profile.delete');
     });
-
+    
     // Logout Route (not in profile prefix)
     Route::post('/logout', [AuthController::class, 'logout'])->name('admin.logout');
 
     // =========================================================================
     // ITEM MODULE ROUTES
     // =========================================================================
-
+    
     Route::prefix('items')->group(function () {
         // CRUD Operations
         Route::get('/', [ItemController::class, 'index'])->name('admin.items.index');
@@ -58,11 +54,11 @@ Route::middleware(['auth:sanctum','auth:admin'])->group(function () {
         Route::post('/{item}/toggle-active', [ItemController::class, 'toggleActive'])->name('admin.items.toggle-active');
         Route::put('/{item}/stock', [ItemController::class, 'updateStock'])->name('admin.items.update-stock');
     });
-
+    
     // =========================================================================
     // ORDER MODULE ROUTES
     // =========================================================================
-
+    
     Route::prefix('orders')->group(function () {
         // CRUD Operations
         Route::get('/', [OrderController::class, 'index'])->name('admin.orders.index');

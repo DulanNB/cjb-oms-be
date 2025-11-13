@@ -22,27 +22,31 @@ class StoreOrderRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => 'required|string|max:255',
-            'item_id' => 'required|exists:items,id',
-            'price' => 'nullable|numeric|min:0',
+            'customer_name' => 'required|string|max:255',
             'status' => 'nullable|string|in:pending,processing,shipped,delivered,cancelled',
             
             // Address fields
-            'address_line_1' => 'required|string|max:255',
-            'address_line_2' => 'nullable|string|max:255',
-            'city' => 'required|string|max:255',
-            'state' => 'nullable|string|max:255',
-            'postal_code' => 'required|string|max:20',
-            'country' => 'required|string|max:255',
+            'address' => 'nullable|string|max:500',
+            'city' => 'nullable|string|max:255',
             
             // Contact fields
-            'phone' => 'nullable|string|max:20',
+            'contact_number_one' => 'nullable|string|max:20',
+            'contact_number_two' => 'nullable|string|max:20',
             'email' => 'nullable|email|max:255',
             
             // Additional fields
+            'other' => 'nullable|string',
+            'due_date' => 'nullable|date',
+            'lead_from' => 'nullable|string|in:facebook,whatsapp,advertisement,other',
             'notes' => 'nullable|string',
-            'weight' => 'nullable|numeric|min:0',
-            'delivery_date' => 'nullable|date',
+            
+            // Order items
+            'order_items' => 'required|array|min:1',
+            'order_items.*.product_id' => 'required|exists:items,id',
+            'order_items.*.qty' => 'required|integer|min:1',
+            'order_items.*.sale_amount' => 'nullable|numeric|min:0',
+            'order_items.*.del_fee' => 'nullable|numeric|min:0',
+            'order_items.*.is_invoiced' => 'nullable|boolean',
         ];
     }
 
@@ -54,11 +58,15 @@ class StoreOrderRequest extends FormRequest
     public function attributes(): array
     {
         return [
-            'item_id' => 'item',
-            'address_line_1' => 'address line 1',
-            'address_line_2' => 'address line 2',
-            'postal_code' => 'postal code',
-            'delivery_date' => 'delivery date',
+            'customer_name' => 'customer name',
+            'contact_number_one' => 'primary contact number',
+            'contact_number_two' => 'secondary contact number',
+            'due_date' => 'due date',
+            'lead_from' => 'lead source',
+            'order_items.*.product_id' => 'product',
+            'order_items.*.qty' => 'quantity',
+            'order_items.*.sale_amount' => 'sale amount',
+            'order_items.*.del_fee' => 'delivery fee',
         ];
     }
 
@@ -70,8 +78,10 @@ class StoreOrderRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'item_id.exists' => 'The selected item does not exist.',
+            'order_items.required' => 'At least one order item is required.',
+            'order_items.*.product_id.exists' => 'The selected product does not exist.',
             'status.in' => 'The status must be one of: pending, processing, shipped, delivered, or cancelled.',
+            'lead_from.in' => 'The lead source must be one of: facebook, whatsapp, advertisement, or other.',
         ];
     }
 }
