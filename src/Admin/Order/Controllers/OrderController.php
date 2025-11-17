@@ -10,6 +10,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Src\Admin\Order\Requests\StoreOrderRequest;
 use Src\Admin\Order\Requests\UpdateOrderRequest;
+use Spatie\QueryBuilder\QueryBuilder;
+use Spatie\QueryBuilder\AllowedFilter;
+use Spatie\QueryBuilder\AllowedSort;
 
 class OrderController extends Controller
 {
@@ -20,37 +23,35 @@ class OrderController extends Controller
     {
         $organizationId = auth()->guard('admin')->user()->organization_id;
         
-        $query = Order::with('orderItems.product')
-            ->where('organization_id', $organizationId);
-
-        // Filter by status
-        if ($request->has('status') && $request->status) {
-            $query->status($request->status);
-        }
-
-        // Search by customer name, order number, email, or contact numbers
-        if ($request->has('search') && $request->search) {
-            $search = $request->get('search');
-            $query->where(function($q) use ($search) {
-                $q->where('customer_name', 'like', "%{$search}%")
-                  ->orWhere('order_number', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%")
-                  ->orWhere('contact_number_one', 'like', "%{$search}%")
-                  ->orWhere('contact_number_two', 'like', "%{$search}%");
-            });
-        }
-
-        // Filter by lead source
-        if ($request->has('lead_from') && $request->lead_from) {
-            $query->where('lead_from', $request->lead_from);
-        }
-
-        // Sort options
-        $sortBy = $request->get('sort_by', 'created_at');
-        $sortDir = $request->get('sort_dir', 'desc');
-        $query->orderBy($sortBy, $sortDir);
-
-        $orders = $query->paginate($request->get('per_page', 15));
+        $orders = QueryBuilder::for(Order::class)
+            ->where('organization_id', $organizationId)
+            ->defaultSort('-id')
+            ->with(['orderItems.product'])
+            ->allowedFilters([
+                AllowedFilter::exact('id'),
+                AllowedFilter::exact('customer_name'),
+                AllowedFilter::exact('status'),
+                AllowedFilter::exact('lead_from'),
+                AllowedFilter::callback('search', function ($query, $value) {
+                    $query->where(function ($query) use ($value) {
+                        // If search value is numeric, prioritize exact ID match
+                        if (is_numeric($value)) {
+                            $query->where('id', '=', intval($value))
+                                ->orWhere('customer_name', 'like', '%' . $value . '%')
+                                ->orWhere('email', 'like', '%' . $value . '%')
+                                ->orWhere('contact_number_one', 'like', '%' . $value . '%')
+                                ->orWhere('contact_number_two', 'like', '%' . $value . '%');
+                        } else {
+                            $query->where('customer_name', 'like', '%' . $value . '%')
+                                ->orWhere('email', 'like', '%' . $value . '%')
+                                ->orWhere('contact_number_one', 'like', '%' . $value . '%')
+                                ->orWhere('contact_number_two', 'like', '%' . $value . '%');
+                        }
+                    });
+                }),
+            ])
+            ->allowedSorts(['id', 'customer_name', 'status', 'created_at', 'due_date'])
+            ->paginate($request->get('per_page', 15));
 
         return response()->json([
             'message' => 'Orders retrieved successfully',
